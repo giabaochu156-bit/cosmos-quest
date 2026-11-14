@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>COSMOS QUEST — NASA Realistic Mars Edition</title>
+<!-- Tải thư viện Three.js và OrbitControls -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<style>
+  :root { --bg:#070b1a; --panel:#111a31; --panel2:#172341; --line:#29395f; --text:#eef4ff; --muted:#aab8d8; --cyan:#65e4ff; --purple:#9b8cff; --green:#72f0bd; --red:#ff7d9b; --gold:#ffd700; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--text); font-family:Inter,Segoe UI,Arial,sans-serif; background:radial-gradient(ellipse at 20% 0%,#182653 0,transparent 45%),radial-gradient(ellipse at 90% 20%,#28174c 0,transparent 35%),var(--bg); min-height:100vh; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:22px clamp(18px,4vw,54px); border-bottom:1px solid #ffffff16; }
+  .brand { font-weight:900; letter-spacing:2px; font-size:20px; } .brand span { color:var(--cyan); }
+  .tag { color:var(--muted); font-size:12px; letter-spacing:1.5px; text-transform:uppercase; display: flex; align-items: center; gap: 10px; }
+  .high-score-badge { background: rgba(255, 215, 0, 0.15); border: 1px solid var(--gold); color: var(--gold); padding: 4px 10px; border-radius: 12px; font-weight: bold; }
+  main { max-width:1200px; margin:auto; padding:28px 20px 60px; }
+  .hero { display:grid; grid-template-columns:1.2fr .8fr; gap:24px; align-items:stretch; }
+  .intro,.panel,.stat,.mission-card { border:1px solid var(--line); background:linear-gradient(145deg,#131e39eF,#0d1429f2); border-radius:20px; box-shadow:0 14px 40px #0003; }
+  .intro { padding:clamp(22px,4vw,42px); }
+  h1 { font-size:clamp(34px,5vw,58px); line-height:1.02; margin:12px 0 18px; letter-spacing:-1.8px; }
+  h1 span { color:var(--cyan); }
+  p { color:var(--muted); line-height:1.65; }
+  .eyebrow { color:var(--green); font-weight:800; letter-spacing:2px; font-size:12px; }
+  
+  /* KHUNG ẢNH BAN ĐẦU */
+  .scene { min-height:270px; position:relative; overflow:hidden; display:grid; place-items:center; background:radial-gradient(circle at 50% 70%,#243b72 0,#111a36 42%,#0b1022 75%); border:1px solid var(--line); border-radius:20px; }
+  .planet { position:absolute; width:210px; height:210px; border-radius:50%; bottom:-72px; background:radial-gradient(circle at 30% 28%,#85dcff,#2866bd 38%,#172a6a 72%,#0b1024); box-shadow:inset -24px -14px 35px #020614,0 0 60px #4b8dff42; }
+  .planet:after { content:""; position:absolute; inset:22px; border-radius:50%; background:repeating-linear-gradient(145deg,transparent 0 18px,#b4eaff16 19px 24px,transparent 25px 39px); transform:rotate(-20deg); }
+  .orbit { position:absolute; width:290px; height:105px; border:1px solid #83dfff8c; border-radius:50%; transform:rotate(-23deg); top:62px; }
+  .satellite { position:absolute; top:82px; left:calc(50% + 74px); font-size:35px; filter:drop-shadow(0 0 12px #65e4ff); transform:rotate(-25deg); transition: transform 2s ease-in-out; }
+  .scene-photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.48; }
+  .stars { position:absolute; inset:0; background-image:radial-gradient(#fff 1px,transparent 1.5px),radial-gradient(#83cfff 1px,transparent 1.5px); background-size:61px 61px,97px 97px; background-position:5px 13px,31px 42px; opacity:.35; }
+
+  /* KHUNG HÀNH TINH 3D */
+  .result-globe-container { width: 100%; height: 320px; position: relative; border-radius: 12px; overflow: hidden; background: radial-gradient(circle at center, #1b0704 0%, #030101 100%); border: 1px solid var(--line); margin-bottom: 14px; }
+  #threeCanvasContainer { width: 100%; height: 100%; display: block; }
+  .globe-hint { position: absolute; bottom: 6px; width: 100%; text-align: center; font-size: 11px; color: #ff9966; background: rgba(0,0,0,0.7); padding: 5px; pointer-events: none; z-index: 5; letter-spacing: 0.5px; }
+
+  .mission-photo { width:100%; height:120px; object-fit:cover; border-radius:10px; margin-bottom:10px; border:1px solid #ffffff22; }
+  .mission-card { overflow:hidden; }
+  .section-title { margin:34px 0 16px; display:flex; justify-content:space-between; align-items:end; gap:12px; }
+  h2 { margin:0; font-size:22px; } .section-title small { color:var(--muted); }
+  .missions { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .mission-card { text-align:left; padding:20px; cursor:pointer; color:var(--text); transition:.2s; }
+  .mission-card:hover { transform:translateY(-3px); border-color:var(--cyan); }
+  .mission-card.active { border-color:var(--cyan); background:linear-gradient(145deg,#183451,#141b39); box-shadow:0 0 0 1px #65e4ff40; }
+  .mission-icon { font-size:30px; } .mission-card h3 { margin:12px 0 6px; } .mission-card p { font-size:13px; margin:0; }
+  .builder { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; }
+  .panel { padding:22px; } .panel h3 { margin:0 0 8px; }
+  .nasa-note-box { background: rgba(101, 228, 255, 0.06); border-left: 3px solid var(--cyan); padding: 12px 15px; margin-top: 14px; border-radius: 0 10px 10px 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+  .nasa-citation { display: block; margin-top: 6px; font-size: 11.5px; color: var(--cyan); font-style: italic; }
+  .field { margin-top:20px; } .field label { display:flex; justify-content:space-between; gap:10px; font-size:14px; font-weight:700; margin-bottom:9px; }
+  .field label span { color:var(--muted); font-weight:500; }
+  select { width:100%; color:var(--text); background:#0b1226; border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
+  .checks { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .check { display:flex; align-items:flex-start; gap:10px; padding:12px; border:1px solid var(--line); background:#0b1226; border-radius:12px; font-size:13px; cursor:pointer; }
+  .check input { accent-color:var(--cyan); margin-top:3px; } .check small { display:block; color:var(--muted); margin-top:4px; }
+  .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:18px 0; }
+  .stat { padding:14px; border-radius:13px; background:#0b1226; box-shadow:none; }
+  .stat .label { color:var(--muted); font-size:12px; } .stat strong { display:block; font-size:22px; margin-top:5px; }
+  .bar { height:7px; border-radius:9px; background:#263352; margin-top:10px; overflow:hidden; } .bar i { display:block; height:100%; width:50%; background:linear-gradient(90deg,var(--purple),var(--cyan)); border-radius:9px; transition:width .3s; }
+  .budget-line { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; margin:9px 0; }
+  button { font:inherit; cursor:pointer; border:0; border-radius:12px; padding:13px 17px; font-weight:800; }
+  .launch { width:100%; margin-top:18px; color:#06111d; background:linear-gradient(100deg,var(--cyan),var(--green)); box-shadow:0 8px 24px #65e4ff25; }
+  .launch:hover { filter:brightness(1.08); transform:translateY(-1px); }
+  .reset { color:var(--muted); background:#202b49; padding:9px 12px; font-size:12px; }
+  .result { display:none; margin-top:20px; border:1px solid var(--line); border-radius:16px; padding:20px; background:#0b1226; }
+  .result.show { display:block; animation:rise .35s ease; } @keyframes rise { from {opacity:0;transform:translateY(8px)} to {opacity:1;transform:translateY(0)} }
+  .result h3 { font-size:22px; margin:0 0 8px; } .result-score { color:var(--green); font-size:34px; font-weight:900; }
+  .log { padding-left:18px; color:var(--muted); line-height:1.8; font-size:13px; }
+  .note { font-size:12px; color:var(--muted); margin-top:14px; }
+  footer { text-align:center; padding:22px; border-top:1px solid #ffffff12; color:#8292b7; font-size:12px; line-height: 1.6; }
+  @media(max-width:780px) { .hero,.builder { grid-template-columns:1fr; } .missions { grid-template-columns:1fr; } .scene { min-height:220px; } header { align-items:flex-start; flex-direction:column; } }
+  @media(max-width:420px) { .checks { grid-template-columns:1fr; } .stats { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">✦ COSMOS <span>QUEST</span></div>
+  <div class="tag">
+    <div class="high-score-badge" id="highScoreDisplay">🏆 Kỷ lục: 0/100</div>
+    <span>NASA Realistic Planet Edition</span>
+  </div>
+</header>
+<main>
+  <section class="hero">
+    <div class="intro">
+      <div class="eyebrow">YOUR MISSION STARTS HERE</div>
+      <h1>Thiết kế.<br><span>Phóng tàu.</span><br>Khám phá.</h1>
+      <p>Trở thành kiến trúc sư sứ mệnh không gian. Hãy chọn mục tiêu, lắp ráp thiết bị và cân bằng các nguồn lực để hoàn thành nhiệm vụ trong giới hạn ngân sách.</p>
+      <div class="nasa-note-box" id="nasaInfoBox">
+        <strong>💡 Dữ liệu khoa học NASA:</strong> Đang tải thông tin sứ mệnh...
+      </div>
+    </div>
+    
+    <div class="scene" aria-label="Minh họa tàu vũ trụ trên quỹ đạo Trái Đất">
+      <img class="scene-photo" src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1200&q=85" alt="Trái Đất nhìn từ không gian" loading="eager">
+      <div class="stars"></div><div class="orbit"></div><div class="planet"></div><div class="satellite" id="animatedSatellite">🛰️</div>
+    </div>
+  </section>
+
+  <div class="section-title"><h2>01 / Chọn nhiệm vụ</h2><small>Chọn một mục tiêu để bắt đầu</small></div>
+  <section class="missions">
+    <button class="mission-card active" data-mission="moon" onclick="chooseMission('moon')">
+      <img class="mission-photo" src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=700&q=80" alt="Mặt Trăng" loading="lazy"><div class="mission-icon">🌕</div><h3>Đổ bộ Mặt Trăng</h3><p>Đưa tàu đổ bộ tới bề mặt và phân tích mẫu đất.</p>
+    </button>
+    <button class="mission-card" data-mission="mars" onclick="chooseMission('mars')">
+      <img class="mission-photo" src="https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=700&q=80" alt="Sao Hỏa" loading="lazy"><div class="mission-icon">🔴</div><h3>Khám phá Sao Hỏa</h3><p>Gửi robot khảo sát địa chất và tìm dấu hiệu của nước.</p>
+    </button>
+    <button class="mission-card" data-mission="earth" onclick="chooseMission('earth')">
+      <img class="mission-photo" src="https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?auto=format&fit=crop&w=700&q=80" alt="Trái Đất" loading="lazy"><div class="mission-icon">🌍</div><h3>Quan sát Trái Đất</h3><p>Đưa vệ tinh lên quỹ đạo để theo dõi môi trường.</p>
+    </button>
+  </section>
+
+  <div class="section-title"><h2>02 / Thiết kế tàu vũ trụ</h2><small>Thay đổi lựa chọn để xem tác động</small></div>
+  <section class="builder">
+    <div class="panel">
+      <h3>Thành phần sứ mệnh</h3><p style="margin-top:6px;font-size:13px">Mỗi lựa chọn đều có lợi ích và chi phí riêng.</p>
+      <div class="field">
+        <label for="rocket">Tên lửa phóng <span>Chi phí & tải trọng</span></label>
+        <select id="rocket" onchange="updateStats()">
+          <option value="light">Astra Lite — tiết kiệm</option>
+          <option value="standard" selected>Nova-5 — cân bằng</option>
+          <option value="heavy">Titan Heavy — tải trọng lớn</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="engine">Hệ thống đẩy <span>Hiệu quả nhiên liệu</span></label>
+        <select id="engine" onchange="updateStats()">
+          <option value="chemical">Động cơ hóa học</option>
+          <option value="ion">Động cơ ion</option>
+          <option value="advanced">Động cơ hiệu suất cao</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Thiết bị khoa học <span>Chọn tối đa theo ngân sách</span></label>
+        <div class="checks">
+          <label class="check"><input type="checkbox" value="camera" checked onchange="updateStats()"><span>📷 Camera độ phân giải cao<small>Quan sát địa hình · $8M</small></span></label>
+          <label class="check"><input type="checkbox" value="spectrometer" checked onchange="updateStats()"><span>🔬 Máy quang phổ<small>Phân tích thành phần · $12M</small></span></label>
+          <label class="check"><input type="checkbox" value="drill" onchange="updateStats()"><span>🪨 Máy khoan lấy mẫu<small>Thu thập mẫu đất · $15M</small></span></label>
+          <label class="check"><input type="checkbox" value="antenna" checked onchange="updateStats()"><span>📡 Ăng-ten liên lạc mạnh<small>Tăng độ tin cậy tín hiệu · $7M</small></span></label>
+          <label class="check"><input type="checkbox" value="solar" checked onchange="updateStats()"><span>☀️ Tấm pin mặt trời mở rộng<small>Tăng nguồn điện · $6M</small></span></label>
+          <label class="check"><input type="checkbox" value="shield" onchange="updateStats()"><span>🛡️ Tấm chắn bức xạ<small>Bảo vệ thiết bị · $9M</small></span></label>
+        </div>
+      </div>
+    </div>
+    <aside class="panel">
+      <h3>Bảng điều khiển nhiệm vụ</h3><p style="margin-top:6px;font-size:13px">Chỉ số ước tính của bản demo giáo dục.</p>
+      <div class="stats">
+        <div class="stat"><div class="label">NGÂN SÁCH CÒN LẠI</div><strong id="budgetValue">$46M</strong><div class="bar"><i id="budgetBar"></i></div></div>
+        <div class="stat"><div class="label">KHỐI LƯỢNG</div><strong id="massValue">640 kg</strong><div class="bar"><i id="massBar"></i></div></div>
+        <div class="stat"><div class="label">NĂNG LƯỢNG</div><strong id="powerValue">72 / 100</strong><div class="bar"><i id="powerBar"></i></div></div>
+        <div class="stat"><div class="label">GIÁ TRỊ KHOA HỌC</div><strong id="scienceValue">65 / 100</strong><div class="bar"><i id="scienceBar"></i></div></div>
+      </div>
+      <div class="budget-line"><span>Tổng chi phí thiết kế</span><strong id="costValue">$54M</strong></div>
+      <div class="budget-line"><span>Giới hạn ngân sách</span><strong>$100M</strong></div>
+      <button class="launch" onclick="launchMission()">🚀 PHÓNG TÀU VŨ TRỤ</button>
+      <button class="reset" style="width:100%;margin-top:9px" onclick="resetMission()">↺ Đặt lại thiết kế</button>
+      
+      <div class="result" id="result" aria-live="polite"></div>
+      
+      <div class="note">Lưu ý: Mô hình giả lập hỗ trợ giáo dục và tư duy thiết kế hệ thống.</div>
+    </aside>
+  </section>
+</main>
+<footer>
+  COSMOS QUEST ULTIMATE · Mô phỏng hành tinh 3D chuẩn xác thực tế<br>
+  Dữ liệu khoa học được trích dẫn từ tài nguyên chính thức của <strong>NASA (NASA Data & Resources)</strong>: NASA Earthdata Search, NASA Worldview, NASA Planetary Data System (PDS) và NASA Lunar Reconnaissance Orbiter (LRO).
+</footer>
+
+<script>
+// --- ÂM THANH HIỆU ỨNG ---
+const rocketSoundDataUri = "data:audio/aac;base64,AAAAGGZ0eXBtcDQyAAAAAG1XAEEAAAAAYXJtZwAAAAADbW9vdgAAAGxtdmhkAAAAAN/o6sDf6OrAAAAAB1MAAH6AAAAAAAEAAAEAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlgdHJhazAAAAAxdGhraGQAAAAAN/o6sDf6OrAAAAAAgAAAAAAAAH6AAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAACbWRpYQAAACFtZGhkAAAAAN/o6sDf6OrAAAAAB1MAAH6AAAAAAAAAIWhkbHIAAAAAbHNvdW5kAAAAAAAAAAAAAAAAAAAAAENvcmUgTWVkaWEgQXVkaW8AAAAAcG1pbmYAAAAcY2hkcAAAAAQAAAAAYWhkcgAAAAAEAAAAABRsYXRtAAAAEGFjc3AAMDAwMAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAZXVyb24AAAABdXJuIAAAAAAAAABoc3RibAAAADtzdGJsAAAAZHN0c2QAAAAAAAAAGWhhY2wAAAAAMW1wcDQAAAAADABhY290AAAAIAAAAAFlc3RzaAAAAAQAAAAABmxhdG0AAAAQbGF0bQAAAAQAAAAAZXN0cwAAAAQAAAAAEHN0dHMAAAAAAQAAAAEAAH6AAAAAAAAAc3RzYwAAAAABAAAAAQAAAAEAAAABAAAAGHN0c3oAAAAAAAAGUwAAAJsAAAF/AAABgwAAAHN0c2cAAAAAAQAAAEMA";
+const rocketAudio = new Audio(rocketSoundDataUri);
+rocketAudio.preload = "auto";
+
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function playSound(type) {
+  try {
+    if (type === 'click') {
+      if (!audioCtx) audioCtx = new AudioContext();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.04);
+    } else if (type === 'rocket') {
+      rocketAudio.currentTime = 0;
+      rocketAudio.play().catch(e => {});
+    }
+  } catch(e) {}
+}
+
+// --- THUẬT TOÁN ĐỌC GIỌNG NÓI TIẾNG VIỆT CHUẨN 100% ---
+let cachedViVoice = null;
+
+function loadVietnameseVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  cachedViVoice = voices.find(v => v.lang === 'vi-VN' || v.lang === 'vi_VN' || v.lang.startsWith('vi'));
+  return cachedViVoice;
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    loadVietnameseVoice();
+  };
+  loadVietnameseVoice();
+}
+
+function speakTextVietnamese(text) {
+  if (!('speechSynthesis' in window)) return;
+  
+  window.speechSynthesis.cancel();
+
+  const cleanText = text
+    .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '')
+    .replace(/\$/g, ' triệu đô la ')
+    .replace(/M\b/g, '')
+    .replace(/kg\b/g, ' kilôgram')
+    .replace(/\//g, ' trên ');
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  
+  const viVoice = cachedViVoice || loadVietnameseVoice();
+  if (viVoice) {
+    utterance.voice = viVoice;
+  }
+  
+  utterance.lang = 'vi-VN';
+  utterance.rate = 0.95;
+  utterance.pitch = 1.0;
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// --- DỮ LIỆU TEXTURE CHUẨN DÀNH CHO CÁC HÀNH TINH ---
+const planetTextures = {
+  moon: {
+    map: "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg",
+    bump: null
+  },
+  mars: {
+    map: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars_2k.jpg",
+    bump: "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/mars_1k.jpg"
+  },
+  earth: {
+    map: "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg",
+    bump: null
+  }
+};
+
+let currentMission = "moon";
+let scene3D, camera3D, renderer3D, planetMesh3D, atmosphereMesh3D, controls3D, animId3D;
+
+// --- HÀM KHỞI TẠO QUẢ CẦU 3D ---
+function initThreeGlobe() {
+  const container = document.getElementById('threeCanvasContainer');
+  if (!container) return;
+
+  if (renderer3D) {
+    cancelAnimationFrame(animId3D);
+    renderer3D.dispose();
+    container.innerHTML = "";
+  }
+
+  const width = container.clientWidth || 300;
+  const height = container.clientHeight || 320;
+
+  scene3D = new THREE.Scene();
+  camera3D = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+  camera3D.position.set(0, 0, 3.2);
+
+  renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+  renderer3D.setSize(width, height);
+  renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer3D.toneMappingExposure = 1.2;
+  container.appendChild(renderer3D.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene3D.add(ambientLight);
+
+  const sunLight = new THREE.DirectionalLight(0xfff5ea, 2.2);
+  sunLight.position.set(6, 3, 5);
+  scene3D.add(sunLight);
+
+  const backLight = new THREE.DirectionalLight(0x224466, 0.5);
+  backLight.position.set(-6, -2, -4);
+  scene3D.add(backLight);
+
+  const geometry = new THREE.SphereGeometry(1, 128, 128);
+  const textureLoader = new THREE.TextureLoader();
+  textureLoader.crossOrigin = "anonymous";
+
+  const currentPlanetData = planetTextures[currentMission];
+  
+  textureLoader.load(currentPlanetData.map, function(texture) {
+    const matOptions = {
+      map: texture,
+      roughness: 0.85,
+      metalness: 0.1
+    };
+
+    if (currentPlanetData.bump) {
+      textureLoader.load(currentPlanetData.bump, function(bumpTexture) {
+        matOptions.bumpMap = bumpTexture;
+        matOptions.bumpScale = 0.035;
+        planetMesh3D.material.needsUpdate = true;
+      });
+    }
+
+    const material = new THREE.MeshStandardMaterial(matOptions);
+    planetMesh3D = new THREE.Mesh(geometry, material);
+    scene3D.add(planetMesh3D);
+  });
+
+  if (currentMission === 'mars') {
+    const atmosphereGeometry = new THREE.SphereGeometry(1.025, 64, 64);
+    const atmosphereMaterial = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float intensity = pow(0.68 - dot(vNormal, vec3(0, 0, 1.0)), 2.5);
+          gl_FragColor = vec4(1.0, 0.35, 0.12, 1.0) * intensity;
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      transparent: true
+    });
+    atmosphereMesh3D = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+    scene3D.add(atmosphereMesh3D);
+  }
+
+  controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+  controls3D.enableDamping = true;
+  controls3D.dampingFactor = 0.04;
+  controls3D.rotateSpeed = 0.8;
+  controls3D.enableZoom = false;
+
+  function animate() {
+    animId3D = requestAnimationFrame(animate);
+    if (planetMesh3D) {
+      planetMesh3D.rotation.y += 0.002;
+    }
+    controls3D.update();
+    renderer3D.render(scene3D, camera3D);
+  }
+  animate();
+}
+
+// --- NASA DATA & GAME LOGIC (SỬ DỤNG DỮ LIỆU CHÍNH THỨC CỦA NASA & TRÍCH DẪN NGUỒN) ---
+const missions = {
+  moon: {
+    name:"Đổ bộ Mặt Trăng", baseCost:28, baseMass:420, basePower:50, baseScience:28, difficulty:1.0, 
+    need:["camera","spectrometer","drill"],
+    nasaNote:"Tàu quỹ đạo trinh sát Mặt Trăng (NASA Lunar Reconnaissance Orbiter - LRO) cung cấp các quan sát toàn diện bề mặt qua các thiết bị như LROC, LOLA và Diviner — giúp lập bản đồ nhiệt độ bề mặt để nghiên cứu các vùng cực chứa băng.",
+    nasaCitation:"Nguồn: NASA Data & Resources — NASA Lunar Reconnaissance Orbiter (LRO) & LRO Diviner Lunar Data"
+  },
+  mars: {
+    name:"Khám phá Sao Hỏa", baseCost:42, baseMass:500, basePower:42, baseScience:34, difficulty:1.35, 
+    need:["camera","spectrometer","drill","shield"],
+    nasaNote:"Hệ thống dữ liệu hành tinh của NASA (NASA Planetary Data System - PDS) là kho lưu trữ dài hạn dữ liệu khoa học từ các sứ mệnh tàu quỹ đạo, tàu đổ bộ và xe tự hành trên Sao Hỏa, bao gồm hình ảnh, địa chất học và môi trường khí quyển.",
+    nasaCitation:"Nguồn: NASA Data & Resources — NASA Planetary Data System (PDS)"
+  },
+  earth: {
+    name:"Quan sát Trái Đất", baseCost:22, baseMass:300, basePower:58, baseScience:24, difficulty:0.8, 
+    need:["camera","antenna","solar"],
+    nasaNote:"NASA Earthdata Search là cổng thông tin chính để khám phá và truy cập dữ liệu quan sát khoa học Trái Đất, kết hợp cùng NASA Worldview — môi trường tương tác trực quan giúp khám phá hình ảnh vệ tinh và các quan sát môi trường toàn cầu.",
+    nasaCitation:"Nguồn: NASA Data & Resources — NASA Earthdata Search & NASA Worldview"
+  }
+};
+
+const rocketData = {
+  light:{name:"Astra Lite",cost:12,massLimit:650,mass:80,capacity:0},
+  standard:{name:"Nova-5",cost:24,massLimit:1100,mass:150,capacity:12},
+  heavy:{name:"Titan Heavy",cost:40,massLimit:1800,mass:260,capacity:25}
+};
+const engineData = {
+  chemical:{name:"Động cơ hóa học",cost:8,mass:100,power:-4,science:2},
+  ion:{name:"Động cơ ion",cost:15,mass:65,power:12,science:4},
+  advanced:{name:"Động cơ hiệu suất cao",cost:25,mass:120,power:5,science:10}
+};
+const equipment = {
+  camera:{cost:8,mass:35,power:-7,science:18},
+  spectrometer:{cost:12,mass:45,power:-12,science:25},
+  drill:{cost:15,mass:90,power:-18,science:22},
+  antenna:{cost:7,mass:25,power:5,science:5},
+  solar:{cost:6,mass:50,power:28,science:3},
+  shield:{cost:9,mass:70,power:-3,science:6}
+};
+
+let bestScore = parseInt(localStorage.getItem('cosmos_best_score')) || 0;
+document.getElementById('highScoreDisplay').textContent = `🏆 Kỷ lục: ${bestScore}/100`;
+
+function selectedEquipment(){ return [...document.querySelectorAll('.check input:checked')].map(x=>x.value); }
+
+function compute(){
+  const m=missions[currentMission], r=rocketData[document.getElementById('rocket').value], e=engineData[document.getElementById('engine').value], eq=selectedEquipment();
+  let cost=m.baseCost+r.cost+e.cost, mass=m.baseMass+e.mass, power=m.basePower+e.power, science=m.baseScience+e.science;
+  eq.forEach(k=>{cost+=equipment[k].cost;mass+=equipment[k].mass;power+=equipment[k].power;science+=equipment[k].science;});
+  power=Math.max(0,Math.min(100,power)); science=Math.max(0,Math.min(100,science));
+  const budget=100-cost, capacity=r.massLimit+r.capacity;
+  return {m,r,e,eq,cost,mass,power,science,budget,capacity};
+}
+
+function setBar(id,value,max){document.getElementById(id).style.width=Math.max(0,Math.min(100,value/max*100))+'%';}
+
+function updateStats(){
+  playSound('click');
+  const s=compute();
+  document.getElementById('budgetValue').textContent=(s.budget<0?'−$'+Math.abs(s.budget):'$'+s.budget)+'M';
+  document.getElementById('massValue').textContent=s.mass+' kg';
+  document.getElementById('powerValue').textContent=s.power+' / 100';
+  document.getElementById('scienceValue').textContent=s.science+' / 100';
+  document.getElementById('costValue').textContent='$'+s.cost+'M';
+  setBar('budgetBar',Math.max(0,s.budget),100); setBar('massBar',s.mass,s.capacity); setBar('powerBar',s.power,100); setBar('scienceBar',s.science,100);
+  document.getElementById('budgetBar').style.background=s.budget<0?'var(--red)':'linear-gradient(90deg,var(--purple),var(--cyan))';
+  document.getElementById('massBar').style.background=s.mass>s.capacity?'var(--red)':'linear-gradient(90deg,var(--purple),var(--cyan))';
+  document.getElementById('result').classList.remove('show');
+}
+
+function chooseMission(key){
+  currentMission=key;
+  document.querySelectorAll('.mission-card').forEach(c=>c.classList.toggle('active',c.dataset.mission===key));
+  document.getElementById('nasaInfoBox').innerHTML = `
+    <strong>💡 Dữ liệu khoa học NASA:</strong> ${missions[key].nasaNote}
+    <span class="nasa-citation">📚 ${missions[key].nasaCitation}</span>
+  `;
+  updateStats();
+}
+
+function launchMission(){
+  playSound('rocket');
+
+  const sat = document.getElementById('animatedSatellite');
+  if(sat) {
+    sat.style.transform = 'translateY(-100px) rotate(-15deg) scale(1.3)';
+    setTimeout(() => { sat.style.transform = 'none'; }, 2000);
+  }
+
+  const s=compute(), result=document.getElementById('result');
+  let score=0, logs=[];
+  const overBudget=s.cost>100, overweight=s.mass>s.capacity;
+  const powerOK=s.power>=45, scienceOK=s.science>=55;
+  const commOK=s.eq.includes('antenna'), solarOK=s.eq.includes('solar');
+  
+  if(overBudget) logs.push('Ngân sách vượt giới hạn. Hãy giảm thiết bị hoặc chọn cấu hình rẻ hơn.');
+  else {score+=25;logs.push('Ngân sách: đạt giới hạn tài chính.');}
+  if(overweight) logs.push('Khối lượng vượt khả năng tải của tên lửa. Hãy giảm tải hoặc nâng cấp tên lửa.');
+  else {score+=20;logs.push('Khối lượng: nằm trong giới hạn tải trọng.');}
+  if(powerOK){score+=15;logs.push('Năng lượng: đủ cho hoạt động cơ bản.');} else logs.push('Năng lượng thấp: cân nhắc thêm pin mặt trời.');
+  if(scienceOK){score+=20;logs.push('Khoa học: thiết bị tạo ra giá trị nghiên cứu tốt.');} else logs.push('Giá trị khoa học còn thấp: bổ sung thiết bị phù hợp.');
+  if(commOK){score+=10;logs.push('Liên lạc: có ăng-ten tăng độ tin cậy truyền dữ liệu.');} else logs.push('Liên lạc: thiếu ăng-ten mạnh.');
+  if(solarOK){score+=10;logs.push('Nguồn điện: có pin mặt trời hỗ trợ.');} else logs.push('Nguồn điện: chưa có pin mặt trời mở rộng.');
+  if(s.m.need.every(k=>s.eq.includes(k))) {score=Math.min(100,score+10);logs.push('Thưởng mục tiêu: đã trang bị đủ thiết bị trọng yếu.');}
+  
+  const success=!overBudget&&!overweight&&s.power>=35&&s.science>=35;
+
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('cosmos_best_score', bestScore);
+    document.getElementById('highScoreDisplay').textContent = `🏆 Kỷ lục: ${bestScore}/100`;
+  }
+
+  result.innerHTML=`
+    <div class="result-globe-container">
+      <div id="threeCanvasContainer"></div>
+      <div class="globe-hint">✨ Quả cầu hành tinh 3D chuẩn NASA — Kéo chuột hoặc vuốt để xoay góc nhìn</div>
+    </div>
+    <h3>${success?'🛰️ Mô phỏng hoàn tất':'⚠️ Nhiệm vụ cần thiết kế lại'}</h3>
+    <div class="result-score">${score}/100</div>
+    <p>${success?'Thiết kế vượt qua các kiểm tra tiêu chuẩn mô phỏng không gian!':'Chưa đạt yêu cầu kỹ thuật tối thiểu. Vui lòng điều chỉnh lại cấu hình.'}</p>
+    <strong>Báo cáo nhiệm vụ: ${s.m.name}</strong><ul class="log">${logs.map(x=>'<li>'+x+'</li>').join('')}</ul>
+    <p style="font-size:12px">Tên lửa: ${s.r.name} · Hệ thống đẩy: ${s.e.name} · Chi phí: $${s.cost}M</p>
+    <p style="font-size:11.5px; color: var(--cyan); margin-top: 8px;">📚 ${s.m.nasaCitation}</p>`;
+  
+  result.classList.add('show');
+  
+  setTimeout(() => {
+    initThreeGlobe();
+  }, 100);
+
+  result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  let speechText = "";
+  if (success) {
+    speechText += "Chúc mừng bạn đã phóng tàu vũ trụ thành công. ";
+  } else {
+    speechText += "Nhiệm vụ thất bại. Thiết kế chưa đạt yêu cầu kỹ thuật. ";
+  }
+  speechText += `Điểm số đạt được là ${score} trên 100 điểm. `;
+  speechText += "Báo cáo chi tiết: " + logs.join(". ");
+
+  setTimeout(() => {
+    speakTextVietnamese(speechText);
+  }, 800);
+}
+
+function resetMission(){
+  playSound('click');
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  document.getElementById('rocket').value='standard';
+  document.getElementById('engine').value='chemical';
+  const defaults=['camera','spectrometer','antenna','solar'];
+  document.querySelectorAll('.check input').forEach(x=>x.checked=defaults.includes(x.value));
+  updateStats();
+}
+
+chooseMission('moon');
+updateStats();
+</script>
+</body>
+</html>
